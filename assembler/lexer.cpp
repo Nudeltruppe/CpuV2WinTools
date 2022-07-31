@@ -149,7 +149,7 @@ bool lexer::__nm() {
 
 bool lexer::lex() {
 	debugf("Lexing...\n");
-	
+
 	while (this->current_char) {
 
 		if ((this->current_char >= 'a' && this->current_char <= 'z') || (this->current_char >= 'A' && this->current_char <= 'Z')) {
@@ -167,54 +167,62 @@ bool lexer::lex() {
 		}
 
 		switch (this->current_char) {
-			case ' ':
-			case '\n':
-			case '\t':
-				break;
-
-			case ':':
-			{
-				lexer_token_t token = { 0 };
-				token.type = COLLON;
-				token.pos_start = this->pos;
-				token.pos_end = this->pos + 1;
-				this->tokens.add(token);
-			}
+		case ' ':
+		case '\n':
+		case '\t':
 			break;
 
-			case ',':
-			{
-				lexer_token_t token = { 0 };
-				token.type = COMMA;
-				token.pos_start = this->pos;
-				token.pos_end = this->pos + 1;
-				this->tokens.add(token);
-			}
-			break;
+		case ':':
+		{
+			lexer_token_t token = { 0 };
+			token.type = COLLON;
+			token.pos_start = this->pos;
+			token.pos_end = this->pos + 1;
+			this->tokens.add(token);
+		}
+		break;
 
-			case '(':
-			{
-				lexer_token_t token = { 0 };
-				token.type = LPAREN;
-				token.pos_start = this->pos;
-				token.pos_end = this->pos + 1;
-				this->tokens.add(token);
-			}
-			break;
+		case ',':
+		{
+			lexer_token_t token = { 0 };
+			token.type = COMMA;
+			token.pos_start = this->pos;
+			token.pos_end = this->pos + 1;
+			this->tokens.add(token);
+		}
+		break;
 
-			case ')':
-			{
-				lexer_token_t token = { 0 };
-				token.type = RPAREN;
-				token.pos_start = this->pos;
-				token.pos_end = this->pos + 1;
-				this->tokens.add(token);
-			}
-			break;
+		case '(':
+		{
+			lexer_token_t token = { 0 };
+			token.type = LPAREN;
+			token.pos_start = this->pos;
+			token.pos_end = this->pos + 1;
+			this->tokens.add(token);
+		}
+		break;
 
-			default:
-				print_error(this->pos, this->pos + 1, (char*) "Unexpected token");
-				return true;
+		case ')':
+		{
+			lexer_token_t token = { 0 };
+			token.type = RPAREN;
+			token.pos_start = this->pos;
+			token.pos_end = this->pos + 1;
+			this->tokens.add(token);
+		}
+		break;
+
+		case ';':
+		{
+			while (this->current_char != '\n' && this->current_char != '\0') {
+				this->advance();
+			}
+		}
+		break;
+
+		default:
+			print_error(this->pos, this->pos + 1, "Unexpected token");
+			return true;
 		}
 
 		this->advance();
