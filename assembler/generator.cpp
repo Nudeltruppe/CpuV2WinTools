@@ -50,6 +50,12 @@ extern "C" {
 	instruction_t build_jmp_instr(int ir0, int ir1, int iimm, int sreg);
 	instruction_t build_jeq_instr(int ir0, int ir1, int iimm, int sreg);
 	instruction_t build_jnq_instr(int ir0, int ir1, int iimm, int sreg);
+
+	instruction_t build_jmpi_instr(int ir0, int ir1, int iimm, int sreg);
+	instruction_t build_jeqi_instr(int ir0, int ir1, int iimm, int sreg);
+	instruction_t build_jnqi_instr(int ir0, int ir1, int iimm, int sreg);
+	instruction_t build_jzri_instr(int ir0, int ir1, int iimm, int sreg);
+	instruction_t build_jnzi_instr(int ir0, int ir1, int iimm, int sreg);
 }
 
 generator::generator(list<lexer_token_t>* tokens) : register_names(10), instruction_builders(10) {
@@ -61,8 +67,8 @@ generator::generator(list<lexer_token_t>* tokens) : register_names(10), instruct
 	register_names.add(register_name((char*)"r1", R1, false));
 	register_names.add(register_name((char*)"r2", R2, false));
 	register_names.add(register_name((char*)"r3", R3, false));
-	register_names.add(register_name((char*)"A", A, true));
-	register_names.add(register_name((char*)"B", B, true));
+	register_names.add(register_name((char*) "A", A, true));
+	register_names.add(register_name((char*) "B", B, true));
 
 	instruction_builders.add(instruction_builder((char*)"nop", NONE, NONE, build_nop_instr));
 	instruction_builders.add(instruction_builder((char*)"mov", IR0, IR1, build_mov_instr));
@@ -86,6 +92,11 @@ generator::generator(list<lexer_token_t>* tokens) : register_names(10), instruct
 	instruction_builders.add(instruction_builder((char*)"jmp", SREG, NONE, build_jmp_instr));
 	instruction_builders.add(instruction_builder((char*)"jeq", SREG, NONE, build_jeq_instr));
 	instruction_builders.add(instruction_builder((char*)"jnq", SREG, NONE, build_jnq_instr));
+	instruction_builders.add(instruction_builder((char*)"jmpi", IIMM, NONE, build_jmpi_instr));
+	instruction_builders.add(instruction_builder((char*)"jeqi", IIMM, NONE, build_jeqi_instr));
+	instruction_builders.add(instruction_builder((char*)"jnqi", IIMM, NONE, build_jnqi_instr));
+	instruction_builders.add(instruction_builder((char*)"jzri", IIMM, NONE, build_jzri_instr));
+	instruction_builders.add(instruction_builder((char*)"jnzi", IIMM, NONE, build_jnzi_instr));
 }
 
 
@@ -149,7 +160,7 @@ bool generator::gen() {
 		else {
 			list<instruction_builder_t>::node* n = this->instruction_builders.find<char*>([](char* instr, list<instruction_builder_t>::node* n) {
 				return strcmp(n->data.name, instr) == 0;
-				}, tmp.data_s);
+			}, tmp.data_s);
 
 			if (n == nullptr) {
 				char buf[256] = { 0 };
@@ -160,51 +171,51 @@ bool generator::gen() {
 
 			for (int i = 0; i < 2; i++) {
 				switch (n->data.operands[i]) {
-				case NONE:
-					continue;
-					break;
-				case IR0:
-				case IR1:
-					if (this->current_token->data.type != ID) {
-						print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID");
-						return true;
-					}
-					break;
-				case IIMM:
-					if (this->current_token->data.type != ID && this->current_token->data.type != NUMBER) {
-						print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID or NUMBER");
-						return true;
-					}
-					if (this->current_token->data.type == ID) {
-						if (strcmp(this->current_token->data.data_s, "lo") == 0 || strcmp(this->current_token->data.data_s, "hi") == 0) {
-							this->advance();
-							if (this->current_token->data.type != LPAREN) {
-								print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected '('");
-								return true;
-							}
-							this->advance();
-							if (this->current_token->data.type != ID && this->current_token->data.type != NUMBER) {
-								print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID or NUMBER");
-								return true;
-							}
-							this->advance();
-							if (this->current_token->data.type != RPAREN) {
-								print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ')'");
-								return true;
-							}
-						}
-						else {
-							print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected 'lo' or 'hi'");
+					case NONE:
+						continue;
+						break;
+					case IR0:
+					case IR1:
+						if (this->current_token->data.type != ID) {
+							print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID");
 							return true;
 						}
-					}
-					break;
-				case SREG:
-					if (this->current_token->data.type != ID) {
-						print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID");
-						return true;
-					}
-					break;
+						break;
+					case IIMM:
+						if (this->current_token->data.type != ID && this->current_token->data.type != NUMBER) {
+							print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID or NUMBER");
+							return true;
+						}
+						if (this->current_token->data.type == ID) {
+							if (strcmp(this->current_token->data.data_s, "lo") == 0 || strcmp(this->current_token->data.data_s, "hi") == 0 || strcmp(this->current_token->data.data_s, "addr") == 0) {
+								this->advance();
+								if (this->current_token->data.type != LPAREN) {
+									print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected '('");
+									return true;
+								}
+								this->advance();
+								if (this->current_token->data.type != ID && this->current_token->data.type != NUMBER) {
+									print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID or NUMBER");
+									return true;
+								}
+								this->advance();
+								if (this->current_token->data.type != RPAREN) {
+									print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ')'");
+									return true;
+								}
+							}
+							else {
+								print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected 'lo' or 'hi' or 'addr'");
+								return true;
+							}
+						}
+						break;
+					case SREG:
+						if (this->current_token->data.type != ID) {
+							print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID");
+							return true;
+						}
+						break;
 				}
 
 				if (i == 0 && n->data.operands[1] != NONE) {
@@ -224,7 +235,7 @@ bool generator::gen() {
 	this->pos = -1;
 	this->advance();
 
-	data = (uint8_t*)malloc(address);
+	data = (uint8_t*) malloc(address);
 	data_len = address;
 	current_data_pos = 0;
 
@@ -245,7 +256,7 @@ bool generator::gen() {
 		else {
 			list<instruction_builder_t>::node* n = this->instruction_builders.find<char*>([](char* instr, list<instruction_builder_t>::node* n) {
 				return strcmp(n->data.name, instr) == 0;
-				}, tmp.data_s);
+			}, tmp.data_s);
 
 			if (n == nullptr) {
 				char buf[256] = { 0 };
@@ -261,163 +272,170 @@ bool generator::gen() {
 
 			for (int i = 0; i < 2; i++) {
 				switch (n->data.operands[i]) {
-				case NONE:
-					continue;
+					case NONE:
+						continue;
+						break;
+
+					case IR0:
+					{
+						if (this->current_token->data.type != ID) {
+							print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID");
+							return true;
+						}
+
+						list<regsiter_name_list_t>::node* r = this->register_names.find<char*>([](char* name, list<regsiter_name_list_t>::node* n) {
+							return strcmp(name, n->data.name) == 0;
+						}, this->current_token->data.data_s);
+
+						if (r == nullptr) {
+							char buf[256] = { 0 };
+							sprintf(buf, "Unknown register: %s", this->current_token->data.data_s);
+							print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, buf);
+							return true;
+						}
+
+						if (r->data.sreg) {
+							print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected IR0 and not SREG");
+							return true;
+						}
+
+						ir0 = r->data.id;
+					}
 					break;
 
-				case IR0:
-				{
-					if (this->current_token->data.type != ID) {
-						print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID");
-						return true;
-					}
+					case IR1:
+					{
+						if (this->current_token->data.type != ID) {
+							print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID");
+							return true;
+						}
 
-					list<regsiter_name_list_t>::node* r = this->register_names.find<char*>([](char* name, list<regsiter_name_list_t>::node* n) {
-						return strcmp(name, n->data.name) == 0;
+						list<regsiter_name_list_t>::node* r = this->register_names.find<char*>([](char* name, list<regsiter_name_list_t>::node* n) {
+							return strcmp(name, n->data.name) == 0;
 						}, this->current_token->data.data_s);
 
-					if (r == nullptr) {
-						char buf[256] = { 0 };
-						sprintf(buf, "Unknown register: %s", this->current_token->data.data_s);
-						print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, buf);
-						return true;
+						if (r == nullptr) {
+							char buf[256] = { 0 };
+							sprintf(buf, "Unknown register: %s", this->current_token->data.data_s);
+							print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, buf);
+							return true;
+						}
+
+						if (r->data.sreg) {
+							print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected IR1 and not SREG");
+							return true;
+						}
+
+						ir1 = r->data.id;
 					}
+					break;
 
-					if (r->data.sreg) {
-						print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected IR0 and not SREG");
-						return true;
-					}
+					case IIMM:
+						if (this->current_token->data.type != ID && this->current_token->data.type != NUMBER) {
+							print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID or NUMBER");
+							return true;
+						}
+						if (this->current_token->data.type != ID && this->current_token->data.type != NUMBER) {
+							print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID or NUMBER");
+							return true;
+						}
+						if (this->current_token->data.type == ID) {
+							bool lo_or_hi = false;
+							bool lo_or_hi_found = false;
+							if (strcmp(this->current_token->data.data_s, "lo") == 0 || strcmp(this->current_token->data.data_s, "hi") == 0 || strcmp(this->current_token->data.data_s, "addr") == 0) {
+								if (strcmp(this->current_token->data.data_s, "lo") == 0) {
+									lo_or_hi = false;
+									lo_or_hi_found = true;
+								}
+								else if (strcmp(this->current_token->data.data_s, "hi") == 0) {
+									lo_or_hi = true;
+									lo_or_hi_found = true;
+								}
 
-					ir0 = r->data.id;
-				}
-				break;
-
-				case IR1:
-				{
-					if (this->current_token->data.type != ID) {
-						print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID");
-						return true;
-					}
-
-					list<regsiter_name_list_t>::node* r = this->register_names.find<char*>([](char* name, list<regsiter_name_list_t>::node* n) {
-						return strcmp(name, n->data.name) == 0;
-						}, this->current_token->data.data_s);
-
-					if (r == nullptr) {
-						char buf[256] = { 0 };
-						sprintf(buf, "Unknown register: %s", this->current_token->data.data_s);
-						print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, buf);
-						return true;
-					}
-
-					if (r->data.sreg) {
-						print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected IR1 and not SREG");
-						return true;
-					}
-
-					ir1 = r->data.id;
-				}
-				break;
-
-				case IIMM:
-					if (this->current_token->data.type != ID && this->current_token->data.type != NUMBER) {
-						print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID or NUMBER");
-						return true;
-					}
-					if (this->current_token->data.type != ID && this->current_token->data.type != NUMBER) {
-						print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID or NUMBER");
-						return true;
-					}
-					if (this->current_token->data.type == ID) {
-						bool lo_or_hi = false;
-						if (strcmp(this->current_token->data.data_s, "lo") == 0 || strcmp(this->current_token->data.data_s, "hi") == 0) {
-							if (strcmp(this->current_token->data.data_s, "lo") == 0) {
-								lo_or_hi = false;
-							}
-							else {
-								lo_or_hi = true;
-							}
-
-							this->advance();
-							if (this->current_token->data.type != LPAREN) {
-								print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected LPAREN");
-								return true;
-							}
-							this->advance();
-							if (this->current_token->data.type != ID && this->current_token->data.type != NUMBER) {
-								print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID or NUMBER");
-								return true;
-							}
-
-							uint16_t num = 0;
-
-							if (this->current_token->data.type == NUMBER) {
-								num = this->current_token->data.data_i;
-							}
-							else {
-								list<label_t>::node* l = labels.find<char*>([](char* name, list<label_t>::node* n) {
-									return strcmp(name, n->data.name) == 0;
-									}, this->current_token->data.data_s);
-
-								if (l == nullptr) {
-									char buf[256];
-									sprintf(buf, "Label %s not found", this->current_token->data.data_s);
-									print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, buf);
+								this->advance();
+								if (this->current_token->data.type != LPAREN) {
+									print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected LPAREN");
+									return true;
+								}
+								this->advance();
+								if (this->current_token->data.type != ID && this->current_token->data.type != NUMBER) {
+									print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID or NUMBER");
 									return true;
 								}
 
-								num = l->data.address;
-							}
+								uint16_t num = 0;
 
-							if (lo_or_hi) {
-								iimm = (num & 0xff00) >> 8;
+								if (this->current_token->data.type == NUMBER) {
+									num = this->current_token->data.data_i;
+								}
+								else {
+									list<label_t>::node* l = labels.find<char*>([](char* name, list<label_t>::node* n) {
+										return strcmp(name, n->data.name) == 0;
+									}, this->current_token->data.data_s);
+
+									if (l == nullptr) {
+										char buf[256];
+										sprintf(buf, "Label %s not found", this->current_token->data.data_s);
+										print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, buf);
+										return true;
+									}
+									num = l->data.address;
+								}
+
+								if (lo_or_hi_found) {
+									if (lo_or_hi) {
+										iimm = (num & 0xff00) >> 8;
+									}
+									else {
+										iimm = num & 0x00ff;
+									}
+								} else {
+									debugf("%d\n", num);
+									iimm = num;
+								}
+
+								this->advance();
+								if (this->current_token->data.type != RPAREN) {
+									print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected RPAREN");
+									return true;
+								}
 							}
 							else {
-								iimm = num & 0x00ff;
-							}
-
-							this->advance();
-							if (this->current_token->data.type != RPAREN) {
-								print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected RPAREN");
+								print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected 'lo' or 'hi' or 'addr'");
 								return true;
 							}
 						}
 						else {
-							print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected 'lo' or 'hi'");
+							iimm = this->current_token->data.data_i;
+						}
+						break;
+
+					case SREG:
+					{
+						if (this->current_token->data.type != ID) {
+							print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID");
 							return true;
 						}
-					}
-					else {
-						iimm = this->current_token->data.data_i;
-					}
-					break;
 
-				case SREG:
-				{
-					if (this->current_token->data.type != ID) {
-						print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected ID");
-						return true;
-					}
-
-					list<regsiter_name_list_t>::node* r = this->register_names.find<char*>([](char* name, list<regsiter_name_list_t>::node* n) {
-						return strcmp(name, n->data.name) == 0;
+						list<regsiter_name_list_t>::node* r = this->register_names.find<char*>([](char* name, list<regsiter_name_list_t>::node* n) {
+							return strcmp(name, n->data.name) == 0;
 						}, this->current_token->data.data_s);
 
-					if (r == nullptr) {
-						char buf[256] = { 0 };
-						sprintf(buf, "Unknown register: %s", this->current_token->data.data_s);
-						print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, buf);
-						return true;
-					}
+						if (r == nullptr) {
+							char buf[256] = { 0 };
+							sprintf(buf, "Unknown register: %s", this->current_token->data.data_s);
+							print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, buf);
+							return true;
+						}
 
-					if (!r->data.sreg) {
-						print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected SREG");
-						return true;
-					}
+						if (!r->data.sreg) {
+							print_error(this->current_token->data.pos_start, this->current_token->data.pos_end, "Expected SREG");
+							return true;
+						}
 
-					sreg = r->data.id;
-				}
-				break;
+						sreg = r->data.id;
+					}
+					break;
 				}
 
 				if (i == 0 && n->data.operands[1] != NONE) {

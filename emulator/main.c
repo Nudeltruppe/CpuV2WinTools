@@ -186,6 +186,39 @@ bool cpu_tick(cpu_state_t* state) {
 	case INSTR_WTRB:
 		cpu_write_byte(BR, state->regs[instruction.reg1]);
 		break;
+	
+	case INSTR_JMPI:
+		state->pc = instruction.imm16;
+		goto out;
+		break;
+	case INSTR_JEQI:
+		if ((state->fg & FG_EQ) != 0) {
+			debugf("exec jmp\n");
+			state->pc = instruction.imm16;
+			goto out;
+		}
+		break;
+	case INSTR_JNQI:
+		if ((state->fg & FG_EQ) == 0) {
+			debugf("exec jmp\n");
+			state->pc = instruction.imm16;
+			goto out;
+		}
+		break;
+	case INSTR_JZRI:
+		if ((state->fg & FG_ZERO) != 0) {
+			debugf("exec jmp\n");
+			state->pc = instruction.imm16;
+			goto out;
+		}
+		break;
+	case INSTR_JNZI:
+		if ((state->fg & FG_ZERO) == 0) {
+			debugf("exec jmp\n");
+			state->pc = instruction.imm16;
+			goto out;
+		}
+		break;
 	default:
 		debugf("unk instr setting halt flag\n");
 		state->fg |= FG_HALT;
@@ -209,16 +242,16 @@ void cpu_dbg(cpu_state_t* state, char* out) {
 
 // -------------------------------------------------------------------------
 
-uint8_t memory[0xffff] = { 0 };
+uint8_t memory_[0xffff] = { 0 };
 
 uint8_t cpu_fetch_byte(uint16_t addr) {
 	debugf("fetching byte at 0x%x\n", addr);
-	return memory[addr];
+	return memory_[addr];
 }
 
 void cpu_write_byte(uint16_t addr, uint8_t val) {
 	debugf("writing byte 0x%x at 0x%x\n", val, addr);
-	memory[addr] = val;
+	memory_[addr] = val;
 }
 
 uint8_t cpu_io_read(uint16_t addr) {
@@ -246,12 +279,12 @@ int main(int argc, char* argv[]) {
 	size_t size = ftell(f);
 	fseek(f, 0, SEEK_SET);
 
-	if (size > sizeof(memory)) {
+	if (size > sizeof(memory_)) {
 		printf("file too large\n");
 		return 1;
 	}
 
-	fread(memory, 1, size, f);
+	fread(memory_, 1, size, f);
 	fclose(f);
 
 	cpu_state_t state = { 0 };
